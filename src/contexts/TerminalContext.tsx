@@ -468,6 +468,16 @@ function buildBanner(): OutputSegment[] {
   ];
 }
 
+function buildLs(): OutputSegment[] {
+  return [
+    seg('drwxr-xr-x  2 root root 4096 May 04 10:00 ', 'gray'), seg('projects/', 'cyan'), br(),
+    seg('-rw-r--r--  1 root root 1024 May 04 10:00 ', 'gray'), seg('skills.md', 'white'), br(),
+    seg('-rw-r--r--  1 root root 2048 May 04 10:00 ', 'gray'), seg('about.txt', 'white'), br(),
+    seg('-rwxr-xr-x  1 root root 1.5M May 04 10:00 ', 'gray'), seg('cv.pdf', 'green'), br(),
+    seg('-rwxr-xr-x  1 root root 4096 May 04 10:00 ', 'gray'), seg('start_ui.sh', 'green'), br(),
+  ];
+}
+
 // ── Boot sequence ─────────────────────────────────────────────────────────────
 
 const BOOT_LINES: TerminalLine[] = [
@@ -549,31 +559,54 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    if (cmd === 'pwd') {
-      pushOutput([seg('/var/opt/scada/nldc/portfolio', 'white'), br()]);
-      return;
-    }
-
-    if (cmd === 'date') {
-      pushOutput([seg(new Date().toString(), 'white'), br()]);
-      return;
-    }
-
     switch (cmd) {
+      case 'pwd':
+        pushOutput([seg('/var/opt/scada/nldc/portfolio', 'white'), br()]); break;
+      case 'date':
+        pushOutput([seg(new Date().toString(), 'white'), br()]); break;
       case 'help':       
       case '?':          
-        pushOutput(buildHelp());
-        break;
+        pushOutput(buildHelp()); break;
       case 'whoami':     
-      case 'cat':        // cat cv.txt -> whoami
         pushOutput(buildWhoami()); break;
+      case 'cat':
+        if (args[0] === 'about.txt') pushOutput(buildWhoami());
+        else if (args[0] === 'skills.md') pushOutput(buildSkills());
+        else if (args[0] === 'cv.pdf') pushOutput([seg('bash: cat: cv.pdf: cannot display binary file (try `download cv`)', 'red'), br()]);
+        else if (!args[0]) pushOutput([seg('Usage: cat <file>', 'red'), br()]);
+        else pushOutput([seg(`bash: cat: ${args[0]}: No such file or directory`, 'red'), br()]);
+        break;
+      case 'cd':
+        if (args[0] === 'projects' || args[0] === 'projects/') {
+          openWindow('projects');
+          pushOutput([seg(currentLang==='vi'?' Đang gắn kết thư mục /projects sang GUI...':' Mounting /projects to GUI...', 'cyan'), br()]);
+        } else if (args[0] === '..' || args[0] === '~') {
+          pushOutput([seg('Already at root directory.', 'gray'), br()]);
+        } else if (!args[0]) {
+          pushOutput([seg('Already at root directory.', 'gray'), br()]);
+        } else {
+          pushOutput([seg(`bash: cd: ${args[0]}: No such file or directory`, 'red'), br()]);
+        }
+        break;
+      case 'sudo':
+        if (args[0]) {
+          pushOutput([
+            seg(`[sudo] password for root: `, 'white'), br(),
+            seg(`Sorry, try again.`, 'red'), br(),
+            seg(`sudo: 3 incorrect password attempts`, 'red'), br(),
+            seg(`This incident will be reported.`, 'yellow'), br()
+          ]);
+        } else {
+          pushOutput([seg(`usage: sudo <command>`, 'red'), br()]);
+        }
+        break;
       case 'version':    pushOutput(buildVersion()); break;
       case 'changelog':
       case 'history':    pushOutput(buildChangelog()); break;
       case 'banner':     pushOutput(buildBanner()); break;
       case 'skills':     pushOutput(buildSkills()); break;
       case 'ls':
-      case 'dir':
+      case 'dir':        pushOutput(buildLs()); break;
       case 'projects':   openWindow('projects'); pushOutput([seg(currentLang==='vi'?' Đang mở thư mục Projects...':' Opening Projects UI...', 'yellow'), br()]); break;
       case 'education':  pushOutput(buildEducation()); break;
       case 'experience': pushOutput(buildExperience()); break;

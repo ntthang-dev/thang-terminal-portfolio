@@ -129,6 +129,16 @@ export default function Terminal({ className = '' }: TerminalProps) {
       const next = Math.max(historyIdx - 1, -1);
       setHistoryIdx(next);
       setInput(next === -1 ? '' : history[next]);
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      const cmds = [
+        'help', 'clear', 'cls', 'download cv', 'lang --vi', 'lang --en', 'lang --fr',
+        'echo', 'ping', 'pwd', 'date', 'whoami', 'cat', 'version', 'changelog', 'history',
+        'banner', 'skills', 'ls', 'dir', 'projects', 'education', 'experience', 'awards',
+        'contact', 'top', 'htop'
+      ];
+      const match = cmds.find(c => c.startsWith(input.toLowerCase()));
+      if (match) setInput(match);
     }
   }
 
