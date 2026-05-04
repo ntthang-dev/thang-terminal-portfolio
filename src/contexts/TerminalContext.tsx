@@ -456,13 +456,26 @@ function buildNotFound(cmd: string): OutputSegment[] {
   ];
 }
 
+function buildBanner(): OutputSegment[] {
+  return [
+    seg('  _   _ _______ _______ _    _          _   _  _____ ', 'green'), br(),
+    seg(' | \\ | |__   __|__   __| |  | |   /\\   | \\ | |/ ____|', 'green'), br(),
+    seg(' |  \\| |  | |     | |  | |__| |  /  \\  |  \\| | |  __ ', 'green'), br(),
+    seg(' | . ` |  | |     | |  |  __  | / /\\ \\ | . ` | | |_ |', 'green'), br(),
+    seg(' | |\\  |  | |     | |  | |  | |/ ____ \\| |\\  | |__| |', 'green'), br(),
+    seg(' |_| \\_|  |_|     |_|  |_|  |_/_/    \\_\\_| \\_|\\_____|', 'green'), br(),
+    br()
+  ];
+}
+
 // ── Boot sequence ─────────────────────────────────────────────────────────────
 
 const BOOT_LINES: TerminalLine[] = [
   {
     id: uid(), kind: 'system',
     segments: [
-      seg('HỆ THỐNG ĐIỆN THẮNG — SCADA CONTROL TERMINAL v2.5.1', 'green'), br(),
+      ...buildBanner(),
+      seg('HỆ THỐNG ĐIỆN THẮNG — SCADA CONTROL TERMINAL v3.0.0', 'green'), br(),
       seg('Kernel: HCMUT-PowerSystem-LTS  |  Arch: 500kV-Grid-x86_64', 'gray'), br(),
       seg('OS: SCADA-Ubuntu 22.04 LTS (Jammy Power)', 'gray'), br(),
       seg('Boot: ', 'gray'), seg('[OK]', 'green'), seg(' All sub-stations nominal.', 'white'), br(),
@@ -557,6 +570,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       case 'version':    pushOutput(buildVersion()); break;
       case 'changelog':
       case 'history':    pushOutput(buildChangelog()); break;
+      case 'banner':     pushOutput(buildBanner()); break;
       case 'skills':     pushOutput(buildSkills()); break;
       case 'ls':
       case 'dir':

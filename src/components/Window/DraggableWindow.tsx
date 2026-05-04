@@ -52,6 +52,8 @@ export default function DraggableWindow({
         flexDirection: 'column',
         boxShadow: '0 10px 30px rgba(0,0,0,0.5), 0 0 15px rgba(0, 255, 65, 0.1)',
         overflow: 'hidden',
+        maxWidth: '100vw',
+        maxHeight: '100vh',
       }}
     >
       {/* Title Bar (Drag Handle) */}
