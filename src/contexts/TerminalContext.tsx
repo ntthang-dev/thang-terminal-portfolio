@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { personalInfo, skills, education } from '../data/cvData';
+import { vfsRoot, resolvePath, formatPath, getNodeByPathArray } from '../vfs';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ export interface TerminalLine {
 interface TerminalContextValue {
   lines: TerminalLine[];
   activeWindows: Record<string, boolean>;
+  currentPath: string[];
   pushInput: (cmd: string) => void;
   runCommand: (cmd: string) => void;
   clearLines: () => void;
@@ -114,6 +116,7 @@ function buildHelp(): OutputSegment[] {
         ['banner',      isVi ? 'In ASCII Logo hệ thống' : 'Print system ASCII Logo'],
         ['matrix',      isVi ? 'Kích hoạt màn hình chờ Matrix' : 'Trigger Matrix screensaver'],
         ['sudo [cmd]',  isVi ? 'Thực thi lệnh quyền root (Cảnh báo)' : 'Execute with root privileges (Warning)'],
+        ['grid, nsmo',  isVi ? 'Fetch dữ liệu lưới điện quốc gia (A0)' : 'Fetch national power grid parameters (A0)'],
       ]
     }
   ];
@@ -477,42 +480,74 @@ function buildBanner(): OutputSegment[] {
   ];
 }
 
-function buildLs(): OutputSegment[] {
-  return [
-    seg('drwxr-xr-x  2 root root 4096 May 04 10:00 ', 'gray'), seg('projects/', 'cyan'), br(),
-    seg('-rw-r--r--  1 root root 1024 May 04 10:00 ', 'gray'), seg('skills.md', 'white'), br(),
-    seg('-rw-r--r--  1 root root 2048 May 04 10:00 ', 'gray'), seg('about.txt', 'white'), br(),
-    seg('-rwxr-xr-x  1 root root 1.5M May 04 10:00 ', 'gray'), seg('cv.pdf', 'green'), br(),
-    seg('-rwxr-xr-x  1 root root 4096 May 04 10:00 ', 'gray'), seg('start_ui.sh', 'green'), br(),
-  ];
+function buildLs(currentPath: string[], args: string[]): OutputSegment[] {
+  // Parse simple flags
+  const isLong = args.includes('-l') || args.includes('-la') || args.includes('-al');
+  const isAll = args.includes('-a') || args.includes('-la') || args.includes('-al');
+  
+  // Find target directory (if user provided a path argument that isn't a flag)
+  const targetArg = args.find(a => !a.startsWith('-'));
+  let targetNode = getNodeByPathArray(vfsRoot, currentPath);
+  
+  if (targetArg) {
+    const res = resolvePath(vfsRoot, currentPath, targetArg);
+    if (res.error) return [seg(res.error, 'red'), br()];
+    targetNode = res.node;
+  }
+
+  if (!targetNode || targetNode.type !== 'dir' || !targetNode.children) {
+    return [seg('bash: ls: reading directory: Input/output error', 'red'), br()];
+  }
+  
+  const out: OutputSegment[] = [];
+  const entries = Object.entries(targetNode.children);
+  
+  if (isLong) out.push(seg(`total ${entries.length * 4}`, 'white'), br());
+  
+  for (const [name, child] of entries) {
+    if (!isAll && name.startsWith('.')) continue;
+    
+    const color = child.type === 'dir' ? 'cyan' : (child.type === 'exec' ? 'green' : 'white');
+    const suffix = child.type === 'dir' ? '/' : '';
+    
+    if (isLong) {
+      const size = child.size.toString().padStart(5, ' ');
+      const date = child.updatedAt;
+      out.push(seg(`${child.permissions} 1 ${child.owner} ${child.group} ${size} ${date} `, 'gray'));
+      out.push(seg(`${name}${suffix}`, color));
+      out.push(br());
+    } else {
+      out.push(seg(`${name}${suffix}  `, color));
+    }
+  }
+  
+  if (!isLong && out.length > 0) out.push(br());
+  
+  return out;
 }
 
 // ── Boot sequence ─────────────────────────────────────────────────────────────
 
-const BOOT_LINES: TerminalLine[] = [
-  {
-    id: uid(), kind: 'system',
-    segments: [
-      ...buildBanner(),
-      seg('HỆ THỐNG ĐIỆN THẮNG — SCADA CONTROL TERMINAL v3.0.0', 'green'), br(),
-      seg('Kernel: HCMUT-PowerSystem-LTS  |  Arch: 500kV-Grid-x86_64', 'gray'), br(),
-      seg('OS: SCADA-Ubuntu 22.04 LTS (Jammy Power)', 'gray'), br(),
-      seg('Boot: ', 'gray'), seg('[OK]', 'green'), seg(' All sub-stations nominal.', 'white'), br(),
-      seg('Sync: ', 'gray'), seg('[OK]', 'green'), seg(' Grid synchronization achieved at 50.01Hz.', 'white'), br(),
-      seg('Load: ', 'gray'), seg('[OK]', 'green'), seg(' Active Power (P) and Reactive Power (Q) balanced.', 'white'), br(),
-      seg('AI Core: ', 'gray'), seg('[ONLINE]', 'cyan'), seg(' PINNs inference engine active.', 'white'), br(),
-      seg('Grid Status: ', 'gray'), seg('[STABLE]', 'green'), br(), br(),
-      seg('Language: VI (Default). Type ', 'gray'), seg('lang --en', 'yellow'), seg(' to switch.', 'gray'), br(),
-      seg('Gõ ', 'gray'), seg('help', 'yellow'), seg(' để xem danh sách lệnh.', 'gray'), br(),
-    ],
-  },
+const BOOT_SEQUENCE: OutputSegment[][] = [
+  buildBanner(),
+  [seg('HỆ THỐNG ĐIỆN THẮNG — SCADA CONTROL TERMINAL v3.0.0', 'green'), br()],
+  [seg('Kernel: HCMUT-PowerSystem-LTS  |  Arch: 500kV-Grid-x86_64', 'gray'), br()],
+  [seg('OS: SCADA-Ubuntu 22.04 LTS (Jammy Power)', 'gray'), br()],
+  [seg('Boot: ', 'gray'), seg('[OK]', 'green'), seg(' All sub-stations nominal.', 'white'), br()],
+  [seg('Sync: ', 'gray'), seg('[OK]', 'green'), seg(' Grid synchronization achieved at 50.01Hz.', 'white'), br()],
+  [seg('Load: ', 'gray'), seg('[OK]', 'green'), seg(' Active Power (P) and Reactive Power (Q) balanced.', 'white'), br()],
+  [seg('AI Core: ', 'gray'), seg('[ONLINE]', 'cyan'), seg(' PINNs inference engine active.', 'white'), br()],
+  [seg('Grid Status: ', 'gray'), seg('[STABLE]', 'green'), br(), br()],
+  [seg('Language: VI (Default). Type ', 'gray'), seg('lang --en', 'yellow'), seg(' to switch.', 'gray'), br(),
+   seg('Gõ ', 'gray'), seg('help', 'yellow'), seg(' để xem danh sách lệnh.', 'gray'), br()]
 ];
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function TerminalProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<TerminalLine[]>(BOOT_LINES);
+  const [lines, setLines] = useState<TerminalLine[]>([]);
   const [activeWindows, setActiveWindows] = useState<Record<string, boolean>>({});
+  const [currentPath, setCurrentPath] = useState<string[]>(['home', 'ntthang']);
 
   const openWindow = useCallback((id: string) => {
     setActiveWindows(prev => ({ ...prev, [id]: true }));
@@ -528,6 +563,21 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
 
   const pushInput = useCallback((cmd: string) => {
     setLines(prev => [...prev, { id: uid(), kind: 'input', raw: cmd }]);
+  }, []);
+
+  const hasBooted = useRef(false);
+
+  useEffect(() => {
+    if (hasBooted.current) return;
+    hasBooted.current = true;
+
+    let delay = 0;
+    BOOT_SEQUENCE.forEach((segments, index) => {
+      setTimeout(() => {
+        setLines(prev => [...prev, { id: uid(), kind: 'system', segments }]);
+      }, delay);
+      delay += (index === 0 ? 500 : 150); // Banner takes a bit longer, then fast boot
+    });
   }, []);
 
   const clearLines = useCallback(() => setLines([]), []);
@@ -572,7 +622,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
     
     switch (cmd) {
       case 'pwd':
-        pushOutput([seg('/var/opt/scada/nldc/portfolio', 'white'), br()]); break;
+        pushOutput([seg(formatPath(currentPath), 'white'), br()]); break;
       case 'date':
         pushOutput([seg(new Date().toString(), 'white'), br()]); break;
       case 'help':       
@@ -581,26 +631,46 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       case 'whoami':     
         pushOutput(buildWhoami()); break;
       case 'cat':
-        if (args[0] === 'about.txt') pushOutput(buildWhoami());
-        else if (args[0] === 'skills.md') pushOutput(buildSkills());
-        else if (args[0] === 'cv.pdf') pushOutput([seg('bash: cat: cv.pdf: cannot display binary file (try `download cv`)', 'red'), br()]);
-        else if (!args[0]) pushOutput([seg('Usage: cat <file>', 'red'), br()]);
-        else pushOutput([seg(`bash: cat: ${args[0]}: No such file or directory`, 'red'), br()]);
+        if (!args[0]) {
+          pushOutput([seg('Usage: cat <file>', 'red'), br()]);
+        } else {
+          const { node, error } = resolvePath(vfsRoot, currentPath, args[0]);
+          if (error) {
+            pushOutput([seg(error, 'red'), br()]);
+          } else if (node && node.type === 'dir') {
+            pushOutput([seg(`bash: cat: ${args[0]}: Is a directory`, 'red'), br()]);
+          } else if (node && node.content) {
+            if (node.content === 'BINARY_CONTENT') {
+              pushOutput([seg(`bash: cat: ${args[0]}: cannot display binary file`, 'red'), br()]);
+            } else {
+              pushOutput([seg(node.content, 'white'), br()]);
+            }
+          } else {
+            pushOutput([seg(`bash: cat: ${args[0]}: No content`, 'red'), br()]);
+          }
+        }
         break;
       case 'cd':
-        if (args[0] === 'projects' || args[0] === 'projects/') {
-          openWindow('projects');
-          pushOutput([seg(currentLang==='vi'?' Đang gắn kết thư mục /projects sang GUI...':' Mounting /projects to GUI...', 'cyan'), br()]);
-        } else if (args[0] === '..' || args[0] === '~') {
-          pushOutput([seg('Already at root directory.', 'gray'), br()]);
-        } else if (!args[0]) {
-          pushOutput([seg('Already at root directory.', 'gray'), br()]);
-        } else {
-          pushOutput([seg(`bash: cd: ${args[0]}: No such file or directory`, 'red'), br()]);
+        {
+          const target = args[0] || '/home/ntthang';
+          const { node, error, newPathArray } = resolvePath(vfsRoot, currentPath, target);
+          if (error) {
+            pushOutput([seg(error, 'red'), br()]);
+          } else if (node && node.type !== 'dir') {
+            pushOutput([seg(`bash: cd: ${target}: Not a directory`, 'red'), br()]);
+          } else if (newPathArray) {
+            setCurrentPath(newPathArray);
+          }
         }
         break;
       case 'sudo':
-        if (args[0]) {
+        if (args.join(' ') === 'rm -rf /') {
+          pushOutput([
+             seg(`[CRITICAL] SYSTEM OVERRIDE DETECTED.`, 'red'), br(),
+             seg(`[CRITICAL] DELETING VFS ROOT...`, 'red'), br(),
+             seg(`Just kidding. You do not have permission to destroy the SCADA grid.`, 'cyan'), br()
+          ]);
+        } else if (args[0]) {
           pushOutput([
             seg(`[sudo] password for root: `, 'white'), br(),
             seg(`Sorry, try again.`, 'red'), br(),
@@ -621,7 +691,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       case 'banner':     pushOutput(buildBanner()); break;
       case 'skills':     pushOutput(buildSkills()); break;
       case 'ls':
-      case 'dir':        pushOutput(buildLs()); break;
+      case 'dir':        pushOutput(buildLs(currentPath, args)); break;
       case 'projects':   openWindow('projects'); pushOutput([seg(currentLang==='vi'?' Đang mở thư mục Projects...':' Opening Projects UI...', 'yellow'), br()]); break;
       case 'education':  pushOutput(buildEducation()); break;
       case 'experience': pushOutput(buildExperience()); break;
@@ -629,13 +699,57 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       case 'contact':    openWindow('contact'); pushOutput([seg(currentLang==='vi'?' Đang thiết lập kết nối EmailJS...':' Establishing EmailJS uplink...', 'cyan'), br()]); break;
       case 'top':        
       case 'htop':       openWindow('diagnostics'); pushOutput([seg(currentLang==='vi'?' Khởi chạy chuẩn đoán hệ thống...':' Launching System Diagnostics...', 'cyan'), br()]); break;
-      default:           pushOutput(buildNotFound(cmdRaw)); break;
+      case 'grid':
+      case 'nsmo':
+        pushOutput([
+          seg('[+] Establishing secure connection to NSMO server... ', 'gray'), seg('OK', 'green'), br(),
+          seg('[+] Fetching real-time grid parameters... ', 'gray'),
+        ]);
+        
+        fetch('/api/grid-data')
+          .then(res => res.json())
+          .then(data => {
+            pushOutput([
+              seg('OK', 'green'), br(),
+              br(),
+              seg('==================================================', 'cyan'), br(),
+              seg('        VIETNAM NATIONAL POWER GRID (REAL-TIME)   ', 'white'), br(),
+              seg('==================================================', 'cyan'), br(),
+              seg(`[~] Frequency:        ${data.frequency} Hz     `, 'white'), 
+                  seg(data.status === 'NORMAL' ? '[NORMAL]' : `[${data.status}]`, data.status === 'NORMAL' ? 'green' : 'yellow'), br(),
+              seg(`[~] Peak Load:        ${data.peakLoad} MW    `, 'white'), seg('[HIGH]', 'red'), br(),
+              seg(`[~] Renewables:       ${data.renewables} MW     `, 'white'), seg(`(${data.renewablesPercentage}%)`, 'cyan'), br(),
+              seg('==================================================', 'cyan'), br(),
+              seg(`Data Source: ${data.source}`, 'gray'), br(),
+            ]);
+          })
+          .catch(() => {
+            pushOutput([
+              seg('FAILED', 'red'), br(),
+              seg(`[!] Error: Unable to fetch grid parameters from A0 proxy.`, 'red'), br(),
+            ]);
+          });
+        break;
+      default:           
+        // Fallback for execution of files in current directory or PATH
+        const { node } = resolvePath(vfsRoot, currentPath, cmdRaw);
+        if (node && node.type === 'exec') {
+          if (node.name === 'start_ui.sh') {
+             openWindow('projects'); openWindow('contact');
+             pushOutput([seg('GUI overlay initialized.', 'green'), br()]);
+          } else {
+             pushOutput([seg(`Executing ${node.name}...`, 'green'), br()]);
+          }
+        } else {
+          pushOutput(buildNotFound(cmdRaw));
+        }
+        break;
     }
-  }, [clearLines, pushOutput, openWindow]);
+  }, [clearLines, pushOutput, openWindow, currentPath]);
 
   return (
     <TerminalContext.Provider value={{ 
-      lines, activeWindows, pushInput, runCommand, clearLines, openWindow, closeWindow 
+      lines, activeWindows, currentPath, pushInput, runCommand, clearLines, openWindow, closeWindow 
     }}>
       {children}
     </TerminalContext.Provider>

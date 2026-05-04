@@ -3,6 +3,7 @@ import type { KeyboardEvent } from 'react';
 import { useTerminal } from '../../contexts/TerminalContext';
 import type { OutputSegment, TerminalLine } from '../../contexts/TerminalContext';
 import MatrixScreensaver from './MatrixScreensaver';
+import { formatPath, vfsRoot, getNodeByPathArray } from '../../vfs';
 
 // ── Segment Renderer ──────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ interface TerminalProps {
 }
 
 export default function Terminal({ className = '' }: TerminalProps) {
-  const { lines, pushInput, runCommand } = useTerminal();
+  const { lines, pushInput, runCommand, currentPath } = useTerminal();
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState(-1);
@@ -159,10 +160,40 @@ export default function Terminal({ className = '' }: TerminalProps) {
         'help', 'clear', 'cls', 'download cv', 'lang --vi', 'lang --en', 'lang --fr',
         'echo', 'ping', 'pwd', 'date', 'whoami', 'cat', 'version', 'changelog', 'history',
         'banner', 'skills', 'ls', 'dir', 'projects', 'education', 'experience', 'awards',
-        'contact', 'top', 'htop'
+        'contact', 'top', 'htop', 'sudo', 'cd', 'matrix'
       ];
-      const match = cmds.find(c => c.startsWith(input.toLowerCase()));
-      if (match) setInput(match);
+      
+      const parts = input.split(' ');
+      if (parts.length === 1) {
+        // Command autocomplete
+        const match = cmds.find(c => c.startsWith(input.toLowerCase()));
+        if (match) setInput(match);
+      } else {
+        // VFS Autocomplete
+        const cmd = parts[0];
+        const partialPath = parts[1];
+        if (['cd', 'cat', 'ls'].includes(cmd) || cmd.startsWith('./')) {
+          const pathParts = partialPath.split('/');
+          const partialName = pathParts.pop() || '';
+          const dirPathArray = partialPath.startsWith('/') ? [] : [...currentPath];
+          
+          for (const p of pathParts) {
+            if (p === '..') dirPathArray.pop();
+            else if (p !== '.' && p !== '') dirPathArray.push(p);
+          }
+          
+          const dirNode = getNodeByPathArray(vfsRoot, dirPathArray);
+          if (dirNode && dirNode.type === 'dir' && dirNode.children) {
+            const matches = Object.keys(dirNode.children).filter(k => k.startsWith(partialName));
+            if (matches.length === 1) {
+              const matchedNode = dirNode.children[matches[0]];
+              const suffix = matchedNode.type === 'dir' ? '/' : ' ';
+              const basePath = pathParts.length > 0 ? pathParts.join('/') + '/' : '';
+              setInput(`${cmd} ${basePath}${matches[0]}${suffix}`);
+            }
+          }
+        }
+      }
     }
   }
 
@@ -174,8 +205,9 @@ export default function Terminal({ className = '' }: TerminalProps) {
   return (
     <>
       {isIdle && <MatrixScreensaver onExit={() => setIsIdle(false)} />}
+      <div className="crt-overlay pointer-events-none" />
       <div
-        className={`flex flex-col h-full font-mono text-sm overflow-hidden relative ${className}`}
+        className={`flex flex-col h-full font-mono text-sm overflow-hidden relative crt-flicker terminal-text-glow ${className}`}
         onClick={() => inputRef.current?.focus()}
         style={{ background: '#0e0e0e', cursor: 'text' }}
       >
@@ -196,7 +228,7 @@ export default function Terminal({ className = '' }: TerminalProps) {
       >
         <span style={{ color: '#00ff41', whiteSpace: 'nowrap' }}>root@ntthang</span>
         <span style={{ color: '#84967e' }}>:</span>
-        <span style={{ color: '#00fbfb' }}>~</span>
+        <span style={{ color: '#00fbfb' }}>{formatPath(currentPath).replace('/home/ntthang', '~')}</span>
         <span style={{ color: '#84967e' }}>$&nbsp;</span>
         <input
           ref={inputRef}
