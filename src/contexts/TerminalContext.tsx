@@ -336,7 +336,7 @@ function buildDownloadCV(): OutputSegment[] {
     seg('  Initiating secure file transfer...', 'yellow'), br(),
     seg('  [████████████████████] 100%', 'green'), br(), br(),
     seg('  CV download triggered.', 'white'), br(),
-    seg('  File: CV_MPCOVN_Nguyen-Trong-Thang_HCMUT.pdf', 'gray'), br(),
+    seg('  File: CV_NguyenTrongThang_Portfolio.pdf', 'gray'), br(),
   ];
 }
 
@@ -411,8 +411,8 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
 
     if (cmd === 'download' || (cmd === 'download' && args[0] === 'cv') || cmdRaw === 'download cv') {
       const a = document.createElement('a');
-      a.href = '/CV_MPCOVN_Nguyen-Trong-Thang_HCMUT.pdf';
-      a.download = 'CV_MPCOVN_Nguyen-Trong-Thang_HCMUT.pdf';
+      a.href = '/CV_NguyenTrongThang_Portfolio.pdf';
+      a.download = 'CV_NguyenTrongThang_Portfolio.pdf';
       a.click();
       pushOutput(buildDownloadCV());
       return;
