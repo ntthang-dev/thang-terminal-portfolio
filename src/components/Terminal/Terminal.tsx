@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useTerminal } from '../../contexts/TerminalContext';
 import type { OutputSegment, TerminalLine } from '../../contexts/TerminalContext';
+import MatrixScreensaver from './MatrixScreensaver';
 
 // ── Segment Renderer ──────────────────────────────────────────────────────────
 
@@ -91,9 +92,32 @@ export default function Terminal({ className = '' }: TerminalProps) {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState(-1);
+  const [isIdle, setIsIdle] = useState(false);
+  const idleTimerRef = useRef<number>();
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const playTick = useTickSound();
+
+  const resetIdleTimer = () => {
+    setIsIdle(false);
+    if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = window.setTimeout(() => setIsIdle(true), 60000); // 60 seconds
+  };
+
+  useEffect(() => {
+    resetIdleTimer();
+    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, resetIdleTimer));
+    
+    const triggerMatrix = () => setIsIdle(true);
+    window.addEventListener('trigger-matrix', triggerMatrix);
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetIdleTimer));
+      window.removeEventListener('trigger-matrix', triggerMatrix);
+      if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -148,11 +172,13 @@ export default function Terminal({ className = '' }: TerminalProps) {
   }
 
   return (
-    <div
-      className={`flex flex-col h-full font-mono text-sm overflow-hidden relative ${className}`}
-      onClick={() => inputRef.current?.focus()}
-      style={{ background: '#0e0e0e', cursor: 'text' }}
-    >
+    <>
+      {isIdle && <MatrixScreensaver onExit={() => setIsIdle(false)} />}
+      <div
+        className={`flex flex-col h-full font-mono text-sm overflow-hidden relative ${className}`}
+        onClick={() => inputRef.current?.focus()}
+        style={{ background: '#0e0e0e', cursor: 'text' }}
+      >
       {/* Output area */}
       <div
         className="flex-1 overflow-y-auto p-3"
@@ -189,5 +215,6 @@ export default function Terminal({ className = '' }: TerminalProps) {
         <span className="animate-pulse ml-px" style={{ color: '#00ff41' }}>█</span>
       </div>
     </div>
+    </>
   );
 }

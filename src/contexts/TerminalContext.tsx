@@ -603,6 +603,10 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       case 'version':    pushOutput(buildVersion()); break;
       case 'changelog':
       case 'history':    pushOutput(buildChangelog()); break;
+      case 'matrix':     
+        window.dispatchEvent(new Event('trigger-matrix'));
+        pushOutput([seg(currentLang==='vi'?' Đang kích hoạt giao thức Matrix...':' Initiating Matrix Protocol...', 'cyan'), br()]); 
+        break;
       case 'banner':     pushOutput(buildBanner()); break;
       case 'skills':     pushOutput(buildSkills()); break;
       case 'ls':
