@@ -101,7 +101,7 @@ export default function Terminal({ className = '' }: TerminalProps) {
   const resetIdleTimer = () => {
     setIsIdle(false);
     if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
-    idleTimerRef.current = window.setTimeout(() => setIsIdle(true), 60000); // 60 seconds
+    idleTimerRef.current = window.setTimeout(() => setIsIdle(true), 10000); // 10 seconds
   };
 
   useEffect(() => {

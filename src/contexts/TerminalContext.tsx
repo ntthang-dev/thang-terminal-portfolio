@@ -489,7 +489,9 @@ const BOOT_LINES: TerminalLine[] = [
       seg('Kernel: HCMUT-PowerSystem-LTS  |  Arch: 500kV-Grid-x86_64', 'gray'), br(),
       seg('OS: SCADA-Ubuntu 22.04 LTS (Jammy Power)', 'gray'), br(),
       seg('Boot: ', 'gray'), seg('[OK]', 'green'), seg(' All sub-stations nominal.', 'white'), br(),
-      seg('AI Core: ', 'gray'), seg('[ONLINE]', 'cyan'), br(),
+      seg('Sync: ', 'gray'), seg('[OK]', 'green'), seg(' Grid synchronization achieved at 50.01Hz.', 'white'), br(),
+      seg('Load: ', 'gray'), seg('[OK]', 'green'), seg(' Active Power (P) and Reactive Power (Q) balanced.', 'white'), br(),
+      seg('AI Core: ', 'gray'), seg('[ONLINE]', 'cyan'), seg(' PINNs inference engine active.', 'white'), br(),
       seg('Grid Status: ', 'gray'), seg('[STABLE]', 'green'), br(), br(),
       seg('Language: VI (Default). Type ', 'gray'), seg('lang --en', 'yellow'), seg(' to switch.', 'gray'), br(),
       seg('Gõ ', 'gray'), seg('help', 'yellow'), seg(' để xem danh sách lệnh.', 'gray'), br(),
@@ -605,7 +607,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       case 'history':    pushOutput(buildChangelog()); break;
       case 'matrix':     
         window.dispatchEvent(new Event('trigger-matrix'));
-        pushOutput([seg(currentLang==='vi'?' Đang kích hoạt giao thức Matrix...':' Initiating Matrix Protocol...', 'cyan'), br()]); 
+        pushOutput([seg(currentLang==='vi'?' Đang kích hoạt giao thức Matrix (Tự động chạy sau 10s)...':' Initiating Matrix Protocol (Auto-runs after 10s)...', 'cyan'), br()]); 
         break;
       case 'banner':     pushOutput(buildBanner()); break;
       case 'skills':     pushOutput(buildSkills()); break;
