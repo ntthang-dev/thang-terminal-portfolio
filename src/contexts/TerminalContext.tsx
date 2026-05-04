@@ -82,6 +82,13 @@ function buildHelp(): OutputSegment[] {
       ]
     },
     {
+      title: isVi ? '[ HỆ THỐNG QUẢN LÝ VÀ PHIÊN BẢN ]' : isFr ? '[ SYSTÈME ET GESTION DES VERSIONS ]' : '[ SYSTEM & VERSION CONTROL ]',
+      cmds: [
+        ['version',     isVi ? 'Hiển thị cấu hình Kernel và HĐH' : 'Show OS and Kernel configuration'],
+        ['changelog',   isVi ? 'Nhật ký các bản cập nhật' : 'System update and release history'],
+      ]
+    },
+    {
       title: isVi ? '[ HỆ THỐNG & MẠNG ]' : isFr ? '[ SYSTÈME & RÉSEAU ]' : '[ SYSTEM & NETWORK ]',
       cmds: [
         ['contact',     isVi ? 'Mở cổng liên lạc (EmailJS)' : 'Establish secure uplink (EmailJS)'],
@@ -340,6 +347,96 @@ function buildDownloadCV(): OutputSegment[] {
   ];
 }
 
+function buildVersion(): OutputSegment[] {
+  return [
+    seg('Quantum Grid OS (QGOS) v3.0.0', 'cyan'), br(),
+    seg('Kernel version: 6.1.0-scada-x64', 'white'), br(),
+    seg('Architecture: x86_64', 'white'), br(),
+    seg('Build Date: ' + new Date().toISOString().split('T')[0], 'white'), br(),
+    seg('Uptime: ' + Math.floor(performance.now() / 60000) + ' minutes', 'white'), br(),
+    seg('Environment: Production (Vercel Edge Network)', 'gray'), br(),
+    br(),
+    seg('Modules loaded: [modbus_rtu, pmu_sync, ai_pinns, matrix_core]', 'green'), br(),
+  ];
+}
+
+function buildChangelog(): OutputSegment[] {
+  const isVi = currentLang === 'vi';
+  const isFr = currentLang === 'fr';
+
+  const out: OutputSegment[] = [
+    seg(isVi ? '┌─ NHẬT KÝ CẬP NHẬT HỆ THỐNG ──────────────────────┐' : isFr ? '┌─ HISTORIQUE DES MISES À JOUR ────────────────────┐' : '┌─ SYSTEM CHANGELOG ───────────────────────────────┐', 'cyan'), br(), br(),
+  ];
+
+  const logs = [
+    {
+      version: 'v3.0.0 (The Realism Update)',
+      date: 'May 04, 2026',
+      changes: isVi ? [
+        'Đổi hệ thống tên định danh thành root@ntthang.',
+        'Thiết kế lại luồng EmailJS sử dụng `mailto:` dự phòng.',
+        'Dịch thuật đa ngôn ngữ toàn bộ nội dung CV (Skills, Education, v.v.).',
+        'Thêm hệ thống kiểm tra phiên bản (lệnh `version` và `changelog`).'
+      ] : isFr ? [
+        'Changement de l\'identifiant en root@ntthang.',
+        'Redesign du flux EmailJS avec un plan de secours `mailto:`.',
+        'Traduction multilingue du CV complet (Compétences, Éducation, etc.).',
+        'Ajout d\'un système de vérification des versions (commandes `version` et `changelog`).'
+      ] : [
+        'Changed prompt identifier to root@ntthang.',
+        'Redesigned EmailJS flow with native `mailto:` fallback.',
+        'Full multilingual translation of all CV content (Skills, Education, etc.).',
+        'Added version tracking system (`version` and `changelog` commands).'
+      ]
+    },
+    {
+      version: 'v2.5.1 (Audio & Router Update)',
+      date: 'May 03, 2026',
+      changes: isVi ? [
+        'Tích hợp âm thanh "tít tít" (tick sounds) qua Web Audio API khi in văn bản.',
+        'Nâng cấp Router hỗ trợ truyền tham số (Arguments) cho lệnh ping, echo.',
+        'Thêm lệnh alias chuẩn Linux: cls, dir, pwd, date, cat.'
+      ] : isFr ? [
+        'Intégration des sons "tick tick" via Web Audio API pour la saisie.',
+        'Mise à niveau du routeur pour supporter les arguments de commande (ping, echo).',
+        'Ajout des alias Linux standards : cls, dir, pwd, date, cat.'
+      ] : [
+        'Integrated "tick tick" terminal sounds via Web Audio API during text output.',
+        'Upgraded Command Router to support arguments (ping, echo).',
+        'Added standard Linux command aliases: cls, dir, pwd, date, cat.'
+      ]
+    },
+    {
+      version: 'v1.0.0 (Initial Deployment)',
+      date: 'April 25, 2026',
+      changes: isVi ? [
+        'Khởi tạo kiến trúc SCADA Control Room.',
+        'Tạo giao diện cửa sổ kéo thả DraggableWindow.',
+        'Tích hợp thông tin dự án đồ án tốt nghiệp.'
+      ] : isFr ? [
+        'Création de l\'architecture SCADA Control Room.',
+        'Création de l\'interface DraggableWindow.',
+        'Intégration des informations de thèse de fin d\'études.'
+      ] : [
+        'Initialized SCADA Control Room architecture.',
+        'Created DraggableWindow UI overlay system.',
+        'Integrated Graduation Thesis project info.'
+      ]
+    }
+  ];
+
+  for (const log of logs) {
+    out.push(seg(`  [${log.version}] - ${log.date}`, 'yellow')); out.push(br());
+    for (const change of log.changes) {
+      out.push(seg(`    • ${change}`, 'white')); out.push(br());
+    }
+    out.push(br());
+  }
+
+  out.push(seg('└───────────────────────────────────────────────────┘', 'cyan')); out.push(br());
+  return out;
+}
+
 function buildPing(ip: string): OutputSegment[] {
   return [
     seg(`PING ${ip} (${ip}) 56(84) bytes of data.`, 'white'), br(),
@@ -457,6 +554,9 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       case 'whoami':     
       case 'cat':        // cat cv.txt -> whoami
         pushOutput(buildWhoami()); break;
+      case 'version':    pushOutput(buildVersion()); break;
+      case 'changelog':
+      case 'history':    pushOutput(buildChangelog()); break;
       case 'skills':     pushOutput(buildSkills()); break;
       case 'ls':
       case 'dir':
