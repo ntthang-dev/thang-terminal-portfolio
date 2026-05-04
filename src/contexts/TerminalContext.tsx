@@ -64,7 +64,7 @@ function buildHelp(): OutputSegment[] {
 
   const out: OutputSegment[] = [
     seg('┌─────────────────────────────────────────────────────────┐', 'green'), br(),
-    seg(isVi ? '│  TÀI LIỆU HƯỚNG DẪN HỆ THỐNG (v2.5.1)                   │' : isFr ? '│  MANUEL DU SYSTÈME (v2.5.1)                             │' : '│  SYSTEM MANUAL (v2.5.1)                                 │', 'green'), br(),
+    seg(isVi ? '│  TÀI LIỆU HƯỚNG DẪN HỆ THỐNG (v3.0.0)                   │' : isFr ? '│  MANUEL DU SYSTÈME (v3.0.0)                             │' : '│  SYSTEM MANUAL (v3.0.0)                                 │', 'green'), br(),
     seg('└─────────────────────────────────────────────────────────┘', 'green'), br(), br(),
   ];
 
@@ -74,11 +74,19 @@ function buildHelp(): OutputSegment[] {
       cmds: [
         ['whoami',      isVi ? 'Tóm tắt thông tin & tầm nhìn' : 'Profile summary and vision'],
         ['skills',      isVi ? 'Danh sách kỹ năng công nghệ' : 'List technical skills by category'],
-        ['projects',    isVi ? 'Giao diện quản lý đồ án (Hoặc dùng: ls, dir)' : 'Project UI (Aliases: ls, dir)'],
+        ['projects',    isVi ? 'Giao diện quản lý đồ án' : 'Project UI'],
         ['education',   isVi ? 'Hồ sơ học thuật & bằng cấp' : 'Academic background & degrees'],
         ['experience',  isVi ? 'Tiến trình kinh nghiệm làm việc' : 'Work experience timeline'],
         ['awards',      isVi ? 'Chứng chỉ & giải thưởng' : 'Certifications & achievements'],
         ['download cv', isVi ? 'Tải tệp PDF CV gốc' : 'Download the full PDF CV'],
+      ]
+    },
+    {
+      title: isVi ? '[ HỆ THỐNG & TỆP TIN (ẢO) ]' : isFr ? '[ SYSTÈME ET FICHIERS ]' : '[ VIRTUAL FILE SYSTEM ]',
+      cmds: [
+        ['ls, dir',     isVi ? 'Liệt kê tệp và thư mục' : 'List files and directories'],
+        ['cd [dir]',    isVi ? 'Chuyển thư mục (VD: cd projects)' : 'Change directory (e.g. cd projects)'],
+        ['cat [file]',  isVi ? 'Đọc nội dung tệp (VD: cat skills.md)' : 'Read file contents (e.g. cat skills.md)'],
       ]
     },
     {
@@ -98,13 +106,14 @@ function buildHelp(): OutputSegment[] {
       ]
     },
     {
-      title: isVi ? '[ LỆNH TIỆN ÍCH ]' : isFr ? '[ UTILITAIRES ]' : '[ CORE UTILITIES ]',
+      title: isVi ? '[ LỆNH TIỆN ÍCH & TRỨNG PHỤC SINH ]' : isFr ? '[ UTILITAIRES & EASTER EGGS ]' : '[ CORE UTILITIES & EASTER EGGS ]',
       cmds: [
         ['help, ?',     isVi ? 'Hiển thị bảng hướng dẫn này' : 'Show this system manual'],
         ['clear, cls',  isVi ? 'Xoá màn hình terminal' : 'Clear terminal screen'],
         ['pwd, date',   isVi ? 'In thư mục hiện tại, thời gian' : 'Print working dir, current time'],
-        ['echo [txt]',  isVi ? 'In chuỗi văn bản ra màn hình' : 'Print text string to stdout'],
-        ['cat cv.txt',  isVi ? 'Đọc nội dung file hồ sơ (Alias: whoami)' : 'Read profile file (Alias: whoami)'],
+        ['banner',      isVi ? 'In ASCII Logo hệ thống' : 'Print system ASCII Logo'],
+        ['matrix',      isVi ? 'Kích hoạt màn hình chờ Matrix' : 'Trigger Matrix screensaver'],
+        ['sudo [cmd]',  isVi ? 'Thực thi lệnh quyền root (Cảnh báo)' : 'Execute with root privileges (Warning)'],
       ]
     }
   ];
